@@ -33,11 +33,14 @@ class CustomAssetSchema(PathAwareSchema):
         ],
         metadata={"description": ""},
     )
+    type_name = fields.Str()
     path = fields.Str()
     version = VersionField()
     description = fields.Str()
     properties = fields.Dict()
     tags = fields.Dict()
+    environment = fields.Dict()
+    code = fields.Dict()
     stage = fields.Str()
     template = fields.Dict(keys=fields.Str(), values=fields.Str())
     inputs = fields.Dict(
@@ -51,9 +54,7 @@ class CustomAssetSchema(PathAwareSchema):
     )
     implements = fields.List(fields.Str(allowed_values=["deployable", "pipeline_runnable"]))
     creation_context = NestedField(CreationContextSchema, dump_only=True)
-    job_name = fields.Str(dump_only=True)
     latest_version = fields.Str(dump_only=True)
-    datastore = fields.Str(metadata={"description": "Name of the datastore to upload to."}, required=False)
     intellectual_property = ExperimentalField(NestedField(IntellectualPropertySchema, required=False), dump_only=True)
 
     @pre_dump

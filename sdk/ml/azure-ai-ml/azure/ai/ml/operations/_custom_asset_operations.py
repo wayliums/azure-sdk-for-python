@@ -126,9 +126,17 @@ class CustomAssetOperations(_ScopeDependentOperations):
         data = {}
         data["RegistryName"] = self._registry_name
         data["Asset"] = {}
-        data["Asset"]["TypeName"] = custom_asset.type
+        data["Asset"]["Type"] = custom_asset.type
+        if custom_asset.type_name:
+            data["Asset"]["TypeName"] = custom_asset.type_name
+        else:
+            data["Asset"]["TypeName"] = custom_asset.type
         data["Asset"]["Name"] = custom_asset.name
         data["Asset"]["Version"] = custom_asset.version
+        if custom_asset.implements:
+            data["Asset"]["Implements"] = custom_asset.implements
+        else:
+            data["Asset"]["Implements"] = []
         data["Asset"]["AssetSpec"] = {}
         if custom_asset.inputs:
             data["Asset"]["AssetSpec"]["inputs"] = custom_asset.inputs
@@ -149,6 +157,7 @@ class CustomAssetOperations(_ScopeDependentOperations):
         s = requests.Session()
         headers = {"Content-Type": "application/json; charset=UTF-8"}
         headers["Authorization"] = "Bearer " + token
+
         response = s.post(url, data=encoded_data, headers=headers)
 
         print("response code:", response.status_code)
@@ -173,7 +182,35 @@ class CustomAssetOperations(_ScopeDependentOperations):
         :return: Custom asset object.
         :rtype: ~azure.ai.ml.entities._assets._artifacts.CustomAsset
         """
-        return self._get(name=name, version=version, label=label)
+        import json
+
+        import requests
+
+        ws_base_url = self._service_client.operations._client._base_url + "/.default"
+        token = self._credential.get_token(ws_base_url).token
+
+        url = self._base_url + "get"
+        s = requests.Session()
+        headers = {"Content-Type": "application/json; charset=UTF-8"}
+        headers["Authorization"] = "Bearer " + token
+
+        data = {}
+        data["AssetId"] = "azureml://registries/" + self._registry_name + "/assets/" + name + "/versions/" + version
+        encoded_data = json.dumps(data).encode("utf-8")
+
+        print("get request body:")
+        print(encoded_data)
+        print()
+
+        response = s.post(url, data=encoded_data, headers=headers)
+
+        print("response code:", response.status_code)
+        print("response content:", response.text)
+
+        if response.status_code == 200:
+            json_response = json.loads(response.text)
+            print("json response:", json_response)
+        return None
 
     @monitor_with_activity(logger, "CustomAsset.List", ActivityType.PUBLICAPI)
     def list(
