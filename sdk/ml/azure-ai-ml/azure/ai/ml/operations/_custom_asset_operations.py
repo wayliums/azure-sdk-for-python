@@ -8,6 +8,7 @@ from contextlib import contextmanager
 from os import PathLike, path
 from typing import Dict, Iterable, Optional, Union
 
+from azure.core.credentials import TokenCredential
 from azure.core.exceptions import ResourceNotFoundError
 from marshmallow.exceptions import ValidationError as SchemaValidationError
 
@@ -87,8 +88,8 @@ class CustomAssetOperations(_ScopeDependentOperations):
         operation_scope: OperationScope,
         operation_config: OperationConfig,
         service_client: Union[ServiceClient042023Preview, ServiceClient102021Dataplane],
-        datastore_operations: DatastoreOperations,
-        all_operations: OperationsContainer = None,
+        all_operations: OperationsContainer,
+        credential: TokenCredential,
         **kwargs: Dict,
     ):
         super(CustomAssetOperations, self).__init__(operation_scope, operation_config)
@@ -97,8 +98,9 @@ class CustomAssetOperations(_ScopeDependentOperations):
         # self._custom_asset_versions_operation = service_client.custom_asset_versions
         # self._custom_asset_container_operation = service_client.custom_asset_containers
         self._service_client = service_client
-        self._datastore_operation = datastore_operations
         self._all_operations = all_operations
+        self._credential = credential
+        self._base_url = "http://10.120.210.85:57255/genericasset/v1.0/"
 
         # Maps a label to a function which given an asset name,
         # returns the asset associated with the label
@@ -118,7 +120,40 @@ class CustomAssetOperations(_ScopeDependentOperations):
         :return: Custom asset object.
         :rtype: ~azure.ai.ml.entities._assets._artifacts.CustomAsset
         """
-        return NotImplementedError
+        ws_base_url = self._service_client.operations._client._base_url + "/.default"
+        token = self._credential.get_token(ws_base_url).token
+
+        data = {}
+        data["RegistryName"] = self._registry_name
+        data["Asset"] = {}
+        data["Asset"]["TypeName"] = custom_asset.type
+        data["Asset"]["Name"] = custom_asset.name
+        data["Asset"]["Version"] = custom_asset.version
+        data["Asset"]["AssetSpec"] = {}
+        if custom_asset.inputs:
+            data["Asset"]["AssetSpec"]["inputs"] = custom_asset.inputs
+        if custom_asset.template:
+            data["Asset"]["AssetSpec"]["template"] = custom_asset.template
+
+        import json
+
+        import requests
+
+        encoded_data = json.dumps(data).encode("utf-8")
+
+        print("creating asset:")
+        print(encoded_data)
+        print()
+
+        url = self._base_url + "create"
+        s = requests.Session()
+        headers = {"Content-Type": "application/json; charset=UTF-8"}
+        headers["Authorization"] = "Bearer " + token
+        response = s.post(url, data=encoded_data, headers=headers)
+
+        print("response code:", response.status_code)
+        print("response content:", response.text)
+        return custom_asset
 
     def _get(self, name: str, version: Optional[str] = None) -> "CustomAssetVersion":  # name:latest
         return NotImplementedError

@@ -13,6 +13,7 @@ from ._batch_deployment_operations import BatchDeploymentOperations
 from ._batch_endpoint_operations import BatchEndpointOperations
 from ._component_operations import ComponentOperations
 from ._compute_operations import ComputeOperations
+from ._custom_asset_operations import CustomAssetOperations
 from ._data_operations import DataOperations
 from ._datastore_operations import DatastoreOperations
 from ._environment_operations import EnvironmentOperations
