@@ -17,43 +17,24 @@ from azure.core.polling import LROPoller
 
 from azure.ai.ml._azure_environments import (
     CloudArgumentKeys,
+    _add_cloud_to_environments,
     _get_base_url_from_metadata,
     _get_cloud_information_from_metadata,
     _get_default_cloud_name,
     _set_cloud,
-    _add_cloud_to_environments,
 )
 from azure.ai.ml._file_utils.file_utils import traverse_up_path_and_find_file
 from azure.ai.ml._restclient.v2020_09_01_dataplanepreview import (
     AzureMachineLearningWorkspaces as ServiceClient092020DataplanePreview,
 )
-from azure.ai.ml._restclient.v2022_02_01_preview import (
-    AzureMachineLearningWorkspaces as ServiceClient022022Preview,
-)
-from azure.ai.ml._restclient.v2022_05_01 import (
-    AzureMachineLearningWorkspaces as ServiceClient052022,
-)
-from azure.ai.ml._restclient.v2022_10_01 import (
-    AzureMachineLearningWorkspaces as ServiceClient102022,
-)
-from azure.ai.ml._restclient.v2022_10_01_preview import (
-    AzureMachineLearningWorkspaces as ServiceClient102022Preview,
-)
-from azure.ai.ml._restclient.v2023_02_01_preview import (
-    AzureMachineLearningWorkspaces as ServiceClient022023Preview,
-)
-from azure.ai.ml._restclient.v2023_04_01_preview import (
-    AzureMachineLearningWorkspaces as ServiceClient042023Preview,
-)
-from azure.ai.ml._restclient.v2023_04_01 import (
-    AzureMachineLearningWorkspaces as ServiceClient042023,
-)
-from azure.ai.ml._scope_dependent_operations import (
-    OperationConfig,
-    OperationsContainer,
-    OperationScope,
-)
-
+from azure.ai.ml._restclient.v2022_02_01_preview import AzureMachineLearningWorkspaces as ServiceClient022022Preview
+from azure.ai.ml._restclient.v2022_05_01 import AzureMachineLearningWorkspaces as ServiceClient052022
+from azure.ai.ml._restclient.v2022_10_01 import AzureMachineLearningWorkspaces as ServiceClient102022
+from azure.ai.ml._restclient.v2022_10_01_preview import AzureMachineLearningWorkspaces as ServiceClient102022Preview
+from azure.ai.ml._restclient.v2023_02_01_preview import AzureMachineLearningWorkspaces as ServiceClient022023Preview
+from azure.ai.ml._restclient.v2023_04_01 import AzureMachineLearningWorkspaces as ServiceClient042023
+from azure.ai.ml._restclient.v2023_04_01_preview import AzureMachineLearningWorkspaces as ServiceClient042023Preview
+from azure.ai.ml._scope_dependent_operations import OperationConfig, OperationsContainer, OperationScope
 from azure.ai.ml._telemetry.logging_handler import get_appinsights_log_handler
 from azure.ai.ml._user_agent import USER_AGENT
 from azure.ai.ml._utils._experimental import experimental
@@ -64,29 +45,30 @@ from azure.ai.ml._utils.utils import _is_https_url
 from azure.ai.ml.constants._common import AzureMLResourceType
 from azure.ai.ml.entities import (
     BatchDeployment,
-    ModelBatchDeployment,
-    PipelineComponentBatchDeployment,
     BatchEndpoint,
     Component,
     Compute,
     Datastore,
     Environment,
     Job,
-    Schedule,
     Model,
+    ModelBatchDeployment,
     OnlineDeployment,
     OnlineEndpoint,
+    PipelineComponentBatchDeployment,
     Registry,
+    Schedule,
     Workspace,
 )
-from azure.ai.ml.entities._assets._artifacts.custom_asset import CustomAsset
 from azure.ai.ml.entities._assets import WorkspaceAssetReference
+from azure.ai.ml.entities._assets._artifacts.custom_asset import CustomAsset
 from azure.ai.ml.exceptions import ErrorCategory, ErrorTarget, ValidationException
 from azure.ai.ml.operations import (
     BatchDeploymentOperations,
     BatchEndpointOperations,
     ComponentOperations,
     ComputeOperations,
+    CustomAssetOperations,
     DataOperations,
     DatastoreOperations,
     EnvironmentOperations,
@@ -98,15 +80,15 @@ from azure.ai.ml.operations import (
     WorkspaceConnectionsOperations,
     WorkspaceOperations,
 )
-from azure.ai.ml.operations._custom_asset_operations import CustomAssetOperations
-from azure.ai.ml.operations._workspace_outbound_rule_operations import WorkspaceOutboundRuleOperations
 from azure.ai.ml.operations._code_operations import CodeOperations
+from azure.ai.ml.operations._custom_asset_operations import CustomAssetOperations
+from azure.ai.ml.operations._feature_set_operations import FeatureSetOperations
+from azure.ai.ml.operations._feature_store_entity_operations import FeatureStoreEntityOperations
+from azure.ai.ml.operations._feature_store_operations import FeatureStoreOperations
 from azure.ai.ml.operations._local_deployment_helper import _LocalDeploymentHelper
 from azure.ai.ml.operations._local_endpoint_helper import _LocalEndpointHelper
 from azure.ai.ml.operations._schedule_operations import ScheduleOperations
-from azure.ai.ml.operations._feature_set_operations import FeatureSetOperations
-from azure.ai.ml.operations._feature_store_operations import FeatureStoreOperations
-from azure.ai.ml.operations._feature_store_entity_operations import FeatureStoreEntityOperations
+from azure.ai.ml.operations._workspace_outbound_rule_operations import WorkspaceOutboundRuleOperations
 
 module_logger = logging.getLogger(__name__)
 
@@ -467,6 +449,7 @@ class MLClient:
             **ops_kwargs,
         )
         self._operation_container.add(AzureMLResourceType.COMPONENT, self._components)
+
         self._jobs = JobOperations(
             self._operation_scope,
             self._operation_config,
@@ -795,6 +778,15 @@ class MLClient:
         :rtype: ComponentOperations
         """
         return self._components
+
+    @property
+    def assets(self) -> CustomAssetOperations:
+        """A collection of custom asset related operations.
+
+        :return: Custom asset operations.
+        :rtype: CustomAssetOperations
+        """
+        return self._custom_assets
 
     @property
     def schedules(self) -> ScheduleOperations:
