@@ -115,8 +115,7 @@ class CustomAssetOperations(_ScopeDependentOperations):
         version = '1'
         code = Code(name=name, version=version, path=path)
         result = self._code_operations.create_or_update(code)
-        print('uploaded code asset:', result)
-        print('returning code id:', result.id)
+        print('created code asset:', result.id)
         return result.id
     
     @monitor_with_activity(logger, "CustomAsset.CreateOrUpdate", ActivityType.PUBLICAPI)
@@ -191,7 +190,8 @@ class CustomAssetOperations(_ScopeDependentOperations):
         response = s.post(url, data=encoded_data, headers=headers)
 
         print("response code:", response.status_code)
-        print("response content:", response.text)
+        if response.status_code != 200 and response.status_code != 202:
+            print("Error response:", response.text)
         return custom_asset
 
     def _get(self, name: str, version: Optional[str] = None) -> "CustomAssetVersion":  # name:latest
@@ -231,7 +231,8 @@ class CustomAssetOperations(_ScopeDependentOperations):
         response = s.post(url, data=encoded_data, headers=headers)
 
         print("response code:", response.status_code)
-        print("response content:", response.text)
+        if response.status_code != 200:
+            print("Error response:", response.text)
 
         if response.status_code == 200:
             json_response = json.loads(response.text)
