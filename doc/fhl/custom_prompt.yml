@@ -1,0 +1,12 @@
+name: custom_prompt_asset
+version: 1
+description: My custom prompt asset
+type: prompt
+inputs:
+  var1:
+    type: string
+  var2:
+    type: string
+template:
+  type: code
+  src: src

@@ -1,0 +1,11 @@
+name: custom_langchain_app
+version: 1
+description: Sample custom langchain app
+type: custom
+type_name: langchain_app
+implements:
+  - IDeployable
+code:
+  type: code
+  src: src
+environment: azureml://registries/testfeed/environments/SKLearnEnv/versions/1689876527

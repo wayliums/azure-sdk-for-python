@@ -7,6 +7,7 @@
 from contextlib import contextmanager
 from os import PathLike, path
 from typing import Dict, Iterable, Optional, Union
+import uuid
 
 from azure.core.credentials import TokenCredential
 from azure.core.exceptions import ResourceNotFoundError
@@ -37,6 +38,7 @@ from azure.ai.ml._scope_dependent_operations import (
     OperationScope,
     _ScopeDependentOperations,
 )
+from ._code_operations import CodeOperations
 from azure.ai.ml._telemetry import ActivityType, monitor_with_activity
 from azure.ai.ml._utils._arm_id_utils import is_ARM_id_for_resource
 from azure.ai.ml._utils._asset_utils import (
@@ -106,6 +108,16 @@ class CustomAssetOperations(_ScopeDependentOperations):
         # returns the asset associated with the label
         self._managed_label_resolver = {"latest": self._get_latest_version}
 
+    # Upload code asset and return the asset ID
+    def _upload_code(self, path: str) -> str:
+        print('Uploading code from:', path)
+        name = str(uuid.uuid4())
+        version = '1'
+        code = Code(name=name, version=version, path=path)
+        result = self._code_operations.create_or_update(code)
+        print('created code asset:', result.id)
+        return result.id
+    
     @monitor_with_activity(logger, "CustomAsset.CreateOrUpdate", ActivityType.PUBLICAPI)
     def create_or_update(self, custom_asset: Union[CustomAsset, WorkspaceAssetReference]) -> CustomAsset:
         """Returns created or updated custom asset.
@@ -126,15 +138,40 @@ class CustomAssetOperations(_ScopeDependentOperations):
         data = {}
         data["RegistryName"] = self._registry_name
         data["Asset"] = {}
-        data["Asset"]["TypeName"] = custom_asset.type
+        data["Asset"]["Type"] = custom_asset.type
+        if custom_asset.type_name:
+            data["Asset"]["TypeName"] = custom_asset.type_name
+        else:
+            data["Asset"]["TypeName"] = custom_asset.type
         data["Asset"]["Name"] = custom_asset.name
         data["Asset"]["Version"] = custom_asset.version
+        data["Asset"]["Description"] = custom_asset.description
+        if custom_asset.implements:
+            data["Asset"]["Implements"] = custom_asset.implements
+        else:
+            data["Asset"]["Implements"] = []
         data["Asset"]["AssetSpec"] = {}
         if custom_asset.inputs:
-            data["Asset"]["AssetSpec"]["inputs"] = custom_asset.inputs
+            data["Asset"]["AssetSpec"]["Inputs"] = custom_asset.inputs
         if custom_asset.template:
-            data["Asset"]["AssetSpec"]["template"] = custom_asset.template
-
+            if isinstance(custom_asset.template, str):
+                data["Asset"]["AssetSpec"]["Template"] = custom_asset.template
+            elif isinstance(custom_asset.template, dict):            
+                if 'src' in custom_asset.template:
+                    data["Asset"]["AssetSpec"]["Template"] = self._upload_code(custom_asset.template['src'])
+                else:
+                    print("Error: 'template' section specified without 'src'")
+        if custom_asset.code:
+            if isinstance(custom_asset.code, str):
+                data["Asset"]["AssetSpec"]["Code"] = custom_asset.code
+            elif isinstance(custom_asset.code, dict):            
+                if 'src' in custom_asset.code:
+                    data["Asset"]["AssetSpec"]["Code"] = self._upload_code(custom_asset.code['src'])
+                else:
+                    print("Error: 'code' section specified without 'src'")
+            
+        if custom_asset.environment:
+            data["Asset"]["AssetSpec"]["Environment"] = custom_asset.environment
         import json
 
         import requests
@@ -149,10 +186,12 @@ class CustomAssetOperations(_ScopeDependentOperations):
         s = requests.Session()
         headers = {"Content-Type": "application/json; charset=UTF-8"}
         headers["Authorization"] = "Bearer " + token
+
         response = s.post(url, data=encoded_data, headers=headers)
 
         print("response code:", response.status_code)
-        print("response content:", response.text)
+        if response.status_code != 200 and response.status_code != 202:
+            print("Error response:", response.text)
         return custom_asset
 
     def _get(self, name: str, version: Optional[str] = None) -> "CustomAssetVersion":  # name:latest
@@ -173,7 +212,46 @@ class CustomAssetOperations(_ScopeDependentOperations):
         :return: Custom asset object.
         :rtype: ~azure.ai.ml.entities._assets._artifacts.CustomAsset
         """
-        return self._get(name=name, version=version, label=label)
+        import json
+
+        import requests
+
+        ws_base_url = self._service_client.operations._client._base_url + "/.default"
+        token = self._credential.get_token(ws_base_url).token
+
+        url = self._base_url + "get"
+        s = requests.Session()
+        headers = {"Content-Type": "application/json; charset=UTF-8"}
+        headers["Authorization"] = "Bearer " + token
+
+        data = {}
+        data["AssetId"] = "azureml://registries/" + self._registry_name + "/assets/" + name + "/versions/" + version
+        encoded_data = json.dumps(data).encode("utf-8")
+
+        response = s.post(url, data=encoded_data, headers=headers)
+
+        print("response code:", response.status_code)
+        if response.status_code != 200:
+            print("Error response:", response.text)
+
+        if response.status_code == 200:
+            json_response = json.loads(response.text)
+            
+            name = json_response['name'] if 'name' in json_response else None
+            version = json_response['version'] if 'version' in json_response else None
+            type = json_response['type'] if 'type' in json_response else None
+            type_name = json_response['typeName'] if 'typeName' in json_response else None
+            description = json_response['description'] if 'description' in json_response else None
+            implements = json_response['implements'] if 'implements' in json_response else None
+            inputs = json_response['assetSpec']['Inputs'] if 'Inputs' in json_response['assetSpec'] else None
+            template = json_response['assetSpec']['Template'] if 'Template' in json_response['assetSpec'] else None
+            code = json_response['assetSpec']['Code'] if 'Code' in json_response['assetSpec'] else None
+            environment = json_response['assetSpec']['Environment'] if 'Environment' in json_response['assetSpec'] else None
+            
+            asset = CustomAsset(name=name, version=version, type=type, type_name=type_name, description=description,
+                                implements=implements, inputs=inputs, template=template, code=code, environment=environment)
+            return asset
+        return None
 
     @monitor_with_activity(logger, "CustomAsset.List", ActivityType.PUBLICAPI)
     def list(
@@ -198,3 +276,7 @@ class CustomAssetOperations(_ScopeDependentOperations):
         Latest is defined as the most recently created, not the most recently updated.
         """
         return NotImplementedError
+
+    @property
+    def _code_operations(self) -> CodeOperations:
+        return self._all_operations.get_operation(AzureMLResourceType.CODE, lambda x: isinstance(x, CodeOperations))

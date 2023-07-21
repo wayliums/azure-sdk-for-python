@@ -55,18 +55,25 @@ class CustomAsset(Artifact):  # pylint: disable=too-many-instance-attributes
         name: Optional[str] = None,
         version: Optional[str] = None,
         type: Optional[str] = None,  # pylint: disable=redefined-builtin
+        type_name: Optional[str] = None,
         path: Optional[Union[str, PathLike]] = None,
         description: Optional[str] = None,
         tags: Optional[Dict] = None,
         properties: Optional[Dict] = None,
         stage: Optional[str] = None,
         implements: Optional[list[str]] = None,
+        inputs: Optional[Dict] = None,
+        template: Optional[Union[str,Dict]] = None,
+        code: Optional[Union[str,Dict]] = None,
+        environment: Optional[str] = None,
         **kwargs,
     ):
-        self.job_name = kwargs.pop("job_name", None)
         self._intellectual_property = kwargs.pop("intellectual_property", None)
-        self.inputs = kwargs.pop("inputs", None)
-        self.template = kwargs.pop("template", None)
+        self.inputs = inputs
+        self.template = template
+        self.code = code
+        self.environment = environment
+        self.type_name = type_name
         super().__init__(
             name=name,
             version=version,
