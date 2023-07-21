@@ -63,9 +63,9 @@ class CustomAsset(Artifact):  # pylint: disable=too-many-instance-attributes
         stage: Optional[str] = None,
         implements: Optional[list[str]] = None,
         inputs: Optional[Dict] = None,
-        template: Optional[Dict] = None,
-        code: Optional[Dict] = None,
-        environment: Optional[Dict] = None,
+        template: Optional[Union[str,Dict]] = None,
+        code: Optional[Union[str,Dict]] = None,
+        environment: Optional[str] = None,
         **kwargs,
     ):
         self._intellectual_property = kwargs.pop("intellectual_property", None)
@@ -74,7 +74,6 @@ class CustomAsset(Artifact):  # pylint: disable=too-many-instance-attributes
         self.code = code
         self.environment = environment
         self.type_name = type_name
-        print(f"passing kwargs: {kwargs}")
         super().__init__(
             name=name,
             version=version,

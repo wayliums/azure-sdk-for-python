@@ -39,10 +39,10 @@ class CustomAssetSchema(PathAwareSchema):
     description = fields.Str()
     properties = fields.Dict()
     tags = fields.Dict()
-    environment = fields.Dict()
-    code = fields.Dict()
+    environment = fields.Str()
+    code = UnionField([fields.Dict(), fields.Str()])
     stage = fields.Str()
-    template = fields.Dict(keys=fields.Str(), values=fields.Str())
+    template = UnionField([fields.Dict(), fields.Str()])
     inputs = fields.Dict(
         keys=fields.Str(),
         values=UnionField(
