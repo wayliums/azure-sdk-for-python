@@ -49,6 +49,7 @@ class CustomAssetSchema(PathAwareSchema):
             ]
         ),
     )
+    implements = fields.List(fields.Str(allowed_values=["deployable", "pipeline_runnable"]))
     creation_context = NestedField(CreationContextSchema, dump_only=True)
     job_name = fields.Str(dump_only=True)
     latest_version = fields.Str(dump_only=True)
