@@ -704,7 +704,7 @@ class AssetTypes:
     CUSTOM_MODEL = "custom_model"
     """Custom model asset type."""
     CUSTOM_ASSET = "custom_asset"
-    # TODO: define custom asset types here (e.g. PROMPT = "prompt")
+    # TODO: define custom asset types here (e.g. PROMPT = "prompt")?
 
 
 class InputTypes:

@@ -43,6 +43,8 @@ class CustomAsset(Artifact):  # pylint: disable=too-many-instance-attributes
     :type properties: dict[str, str]
     :param stage: The stage of the resource.
     :type stage: str
+    :param implements: Specifies which interfaces the asset implements. Possible values include: "deployable", "pipeline_runnable".
+    :type implements: Optional[list[str]]
     :param kwargs: A dictionary of additional configuration parameters.
     :type kwargs: dict
     """
@@ -58,6 +60,7 @@ class CustomAsset(Artifact):  # pylint: disable=too-many-instance-attributes
         tags: Optional[Dict] = None,
         properties: Optional[Dict] = None,
         stage: Optional[str] = None,
+        implements: Optional[list[str]] = None,
         **kwargs,
     ):
         self.job_name = kwargs.pop("job_name", None)
@@ -75,6 +78,7 @@ class CustomAsset(Artifact):  # pylint: disable=too-many-instance-attributes
         )
         self.type = type
         self.stage = stage
+        self.implements = implements
         # Are there any other attributes we need here?
         if self._is_anonymous and self.path:
             _ignore_file = get_ignore_file(self.path)
